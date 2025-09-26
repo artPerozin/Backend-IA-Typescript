@@ -4,6 +4,6 @@ export default interface ConfigDatabase {
     password: string;
     database: string;
     host: string;
-    port: string;
+    port: number;
 
 }
