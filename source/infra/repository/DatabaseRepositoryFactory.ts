@@ -3,7 +3,7 @@ import RepositoryFactoryInterface from "../../domain/Interfaces/RepositoryFactor
 import TokenRepositoryInterface from "../../domain/Interfaces/TokenRepositoryInterface";
 import UserRepositoryInterface from "../../domain/Interfaces/UserRepositoryInterface";
 import Connection from "../database/Connection";
-import ChunkRepositoryDatabase from "./database/ChunkRepositoryMemory";
+import ChunkRepositoryDatabase from "./database/ChunkRepositoryDatabase";
 import TokenRepositoryDatabase from "./database/TokenRepositoryDatabase";
 import UserRepositoryDatabase from "./database/UserRepositoryDatabase";
 

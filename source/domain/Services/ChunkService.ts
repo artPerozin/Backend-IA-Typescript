@@ -1,6 +1,7 @@
 import RepositoryFactoryInterface from "../Interfaces/RepositoryFactoryInterface";
 import ChunkRepositoryInterface from "../Interfaces/ChunkRepositoryInterface";
 import Chunk from "../Entity/Chunk";
+import { cosineSimilarity } from "./CosineSimilarity";
 
 export default class ChunkService {
     private chunkRepository: ChunkRepositoryInterface;
@@ -9,22 +10,24 @@ export default class ChunkService {
         this.chunkRepository = repositoryFactory.createChunkRepository();
     }
 
-    private cosineSimilarity(vecA: number[], vecB: number[]): number {
-        const dotProduct = vecA.reduce((acc, val, i) => acc + val * vecB[i], 0);
-        const magnitudeA = Math.sqrt(vecA.reduce((acc, val) => acc + val ** 2, 0));
-        const magnitudeB = Math.sqrt(vecB.reduce((acc, val) => acc + val ** 2, 0));
-        if (magnitudeA === 0 || magnitudeB === 0) return 0;
-        return dotProduct / (magnitudeA * magnitudeB);
-    }
-
-    async findRelevantChunks(questionEmbedding: number[], topK = 3): Promise<Chunk[]> {
+    async findRelevantChunks(
+        questionEmbedding: number[],
+        topK = 3
+    ): Promise<Chunk[]> {
         const allChunks: Chunk[] = await this.chunkRepository.getAll();
         if (!allChunks.length) return [];
 
-        const sims = allChunks.map(chunk => ({
-            chunk,
-            sim: this.cosineSimilarity(questionEmbedding, chunk.embedding),
-        }));
+        const sims = allChunks.map(chunk => {
+            let emb: any = chunk.embedding;
+            if (typeof emb === "string") {
+                try { emb = JSON.parse(emb); } catch { emb = []; }
+            }
+            const embeddingArray: number[] = Array.isArray(emb) ? (emb as number[]) : [];
+            return {
+                chunk,
+                sim: cosineSimilarity(questionEmbedding, embeddingArray),
+            };
+        });
 
         sims.sort((a, b) => b.sim - a.sim);
 

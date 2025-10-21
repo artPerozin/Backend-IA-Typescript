@@ -11,7 +11,6 @@ import ChunkService from "../../domain/Services/ChunkService";
 import { systemPrompts } from "../../domain/Enums/SystemPrompts";
 import OpenAIChatService from "../../domain/Services/OpenAIChatService";
 
-//@ts-ignore
 import removeStopwordsService from "../../domain/Services/removeStopwordsService";
 
 export default class AskQuestion {
