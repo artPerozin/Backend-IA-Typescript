@@ -10,7 +10,7 @@ import EmbeddingService from "../../domain/Services/EmbeddingService";
 import ChunkService from "../../domain/Services/ChunkService";
 import { systemPrompts } from "../../domain/Enums/SystemPrompts";
 import OpenAIChatService from "../../domain/Services/OpenAIChatService";
-
+import ChatHistoryService from "../../domain/Services/ChatHistoryService";
 import removeStopwordsService from "../../domain/Services/removeStopwordsService";
 
 export default class AskQuestion {
@@ -19,19 +19,22 @@ export default class AskQuestion {
     private embeddingService: EmbeddingService;
     private chunkService: ChunkService;
     private chatService: OpenAIChatService;
+    private chatHistoryService: ChatHistoryService;
 
     constructor(
         repositoryFactory: RepositoryFactoryInterface,
         embeddingService?: EmbeddingService,
         chunkService?: ChunkService,
-        chatService?: OpenAIChatService
+        chatService?: OpenAIChatService,
+        chatHistoryService?: ChatHistoryService
     ) {
         this.repositoryFactory = repositoryFactory;
         this.tokenRepository = repositoryFactory.createTokenRepository();
         const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
         this.embeddingService = embeddingService || new EmbeddingService(this.repositoryFactory, openai);
         this.chunkService = chunkService || new ChunkService(this.repositoryFactory);
-        this.chatService = chatService || new OpenAIChatService(this.repositoryFactory, openai);
+        this.chatHistoryService = chatHistoryService || new ChatHistoryService(this.repositoryFactory);
+        this.chatService = chatService || new OpenAIChatService(this.repositoryFactory, this.chatHistoryService, openai);
     }
 
     async execute(input: AskQuestionInput): Promise<AskQuestionOutput> {
@@ -47,6 +50,7 @@ export default class AskQuestion {
             fileText = await extractPdfText(file);
             fileText = await removeStopwordsService(fileText, "porBr");
         }
+
         const combinedText = [fileText, question].filter(Boolean).join(" ");
         const queryEmbedding = await this.embeddingService.createEmbedding(combinedText, ModelType.PROMPT_MODEL, TokenType.INPUT);
         const topChunks = await this.chunkService.findRelevantChunks(queryEmbedding);
@@ -58,7 +62,17 @@ export default class AskQuestion {
             Pergunta:
             ${question}
         `;
-        const answer = await this.chatService.chatWithContext(ModelType.PROMPT_MODEL, systemPrompt, userPrompt);
-        return { answer };
+
+        let conversation;
+        if (input.conversationId) {
+            conversation = await this.chatHistoryService.getConversationById(input.conversationId);
+            if (!conversation) throw new Error("Conversa não encontrada.");
+        } else {
+            conversation = await this.chatHistoryService.createConversation(input.userId, `Pergunta de ${input.userId}`);
+        }
+
+        const answer = await this.chatService.chatWithConversation(conversation, ModelType.PROMPT_MODEL, systemPrompt, userPrompt);
+
+        return { answer, conversationId: conversation.id };
     }
 }

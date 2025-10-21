@@ -8,6 +8,8 @@ import ExpressAuth from "./infra/http/Middleware/AuthExpress";
 import CreateUsersTable from "./infra/migrations/01.create_users_table";
 import CreateTokensTable from "./infra/migrations/02.create_tokens_table";
 import CreateChunksTable from "./infra/migrations/03.create_chunks_table";
+import CreateMessagesTable from "./infra/migrations/05.create_messages_table";
+import CreateConversationsTable from "./infra/migrations/04.create_conversations_table";
 
 config();
 
@@ -32,6 +34,14 @@ async function bootstrap() {
         const chunksMigration = new CreateChunksTable(connection);
         await chunksMigration.up();
         console.log("Migration 'chunks' executada com sucesso!");
+
+        const ConversationsTable = new CreateConversationsTable(connection);
+        await chunksMigration.up();
+        console.log("Migration 'conversations' executada com sucesso!");
+
+        const MessagesTable = new CreateMessagesTable(connection);
+        await chunksMigration.up();
+        console.log("Migration 'messages' executada com sucesso!");
     } catch (err) {
         console.error("Erro ao rodar as migrations:", err);
     }
