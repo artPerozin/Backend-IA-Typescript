@@ -35,12 +35,12 @@ async function bootstrap() {
         await chunksMigration.up();
         console.log("Migration 'chunks' executada com sucesso!");
 
-        const ConversationsTable = new CreateConversationsTable(connection);
-        await chunksMigration.up();
+        const conversationsTable = new CreateConversationsTable(connection);
+        await conversationsTable.up();
         console.log("Migration 'conversations' executada com sucesso!");
 
-        const MessagesTable = new CreateMessagesTable(connection);
-        await chunksMigration.up();
+        const messagesTable = new CreateMessagesTable(connection);
+        await messagesTable.up();
         console.log("Migration 'messages' executada com sucesso!");
     } catch (err) {
         console.error("Erro ao rodar as migrations:", err);
