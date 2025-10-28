@@ -39,7 +39,6 @@ export default class AskQuestion {
 
     async execute(input: AskQuestionInput): Promise<AskQuestionOutput> {
         if (!input.question) throw new Error("O campo pergunta é obrigatório.");
-        let question = await removeStopwordsService(input.question, "porBr");
         let fileText = "";
         if (input.file) {
             const file = input.file as Express.Multer.File;
@@ -48,11 +47,17 @@ export default class AskQuestion {
             if (file.size > 1_000_000)
                 throw new Error("O arquivo PDF deve ter menos de 1MB.");
             fileText = await extractPdfText(file);
-            fileText = await removeStopwordsService(fileText, "porBr");
         }
 
-        const combinedText = [fileText, question].filter(Boolean).join(" ");
-        const queryEmbedding = await this.embeddingService.createEmbedding(combinedText, ModelType.PROMPT_MODEL, TokenType.INPUT);
+        const combinedText = [fileText, input.question].filter(Boolean).join(" ");
+        const cleanedText = await removeStopwordsService(combinedText, "porBr");
+
+        const queryEmbedding = await this.embeddingService.createEmbedding(
+            cleanedText,
+            ModelType.EMBEDDING_MODEL,
+            TokenType.INPUT
+        );
+
         const topChunks = await this.chunkService.findRelevantChunks(queryEmbedding);
         const systemPrompt = systemPrompts[input.mentorType];
         const userPrompt = `
@@ -60,7 +65,7 @@ export default class AskQuestion {
             ${topChunks.map(c => c.chunk).join("\n\n")}
 
             Pergunta:
-            ${question}
+            ${input.question}
         `;
 
         let conversation;
@@ -68,10 +73,15 @@ export default class AskQuestion {
             conversation = await this.chatHistoryService.getConversationById(input.conversationId);
             if (!conversation) throw new Error("Conversa não encontrada.");
         } else {
-            conversation = await this.chatHistoryService.createConversation(input.userId, `Pergunta de ${input.userId}`);
+            conversation = await this.chatHistoryService.createConversation(input.userId, `${input.userId}`);
         }
 
-        const answer = await this.chatService.chatWithConversation(conversation, ModelType.PROMPT_MODEL, systemPrompt, userPrompt);
+        const answer = await this.chatService.chatWithConversation(
+            conversation,
+            ModelType.PROMPT_MODEL,
+            systemPrompt,
+            userPrompt
+        );
 
         return { answer, conversationId: conversation.id };
     }
